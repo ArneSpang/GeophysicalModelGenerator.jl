@@ -83,32 +83,36 @@ function voxGrav(X::Array{Float64, 3}, Y::Array{Float64, 3}, Z::Array{Float64, 3
     zCells = z_vec[1:end-1] .+ dz/2
 
     # precompute distances
+    d_cube = zeros(nx-1,ny-1,nz-1)
     if printing
         @printf "Precomputing Distances:"
-        @time d_cube = precompDist(x_vec, y_vec, xCells, yCells, zCells, nx, ny, nz)
+        @time precompDist!(d_cube, x_vec, y_vec, xCells, yCells, zCells, nx, ny, nz)
         @printf "\n"
     else
-        d_cube = precompDist(x_vec, y_vec, xCells, yCells, zCells, nx, ny, nz)
+        precompDist!(d_cube, x_vec, y_vec, xCells, yCells, zCells, nx, ny, nz)
     end
     ###################################################
 
     ############# compute bouguer anomaly #############
+    dg = zeros(nx,ny)
     if printing
         @printf "Computing Bouguer anomaly:"
-        @time dg = computeBoug(nx,ny,nz,DRHO,d_cube,VG_vox,zCells,rhoTol)
+        @time computeBoug!(dg,nx,ny,nz,DRHO,d_cube,VG_vox,zCells,rhoTol)
         @printf "\n"
     else
-        dg = computeBoug(nx,ny,nz,DRHO,d_cube,VG_vox,zCells,rhoTol)
+        computeBoug!(dg,nx,ny,nz,DRHO,d_cube,VG_vox,zCells,rhoTol)
     end
     ###################################################
 
     ############ compute bouguer gradients ############
+    gradX = zeros(nx,ny)
+    gradY = zeros(nx,ny)
     if printing
         @printf "Computing Bouguer gradients:"
-        @time gradX, gradY = computeBougGrads(nx,ny,dg)
+        @time computeBougGrads!(gradX, gradY, nx, ny, dg)
         @printf "\n"
     else
-        gradX, gradY = computeBougGrads(nx,ny,dg)
+        computeBougGrads!(gradX, gradY, nx, ny, dg)
     end
     ###################################################
 
@@ -241,36 +245,27 @@ function checkInput(X, Y, Z, RHO, refMod, lengthUnit, rhoTol, Topo, outName, pri
 
 end
 
-function precompDist(x_vec, y_vec, xCells, yCells, zCells, nx, ny, nz)
-    d_square = zeros(nx-1,ny-1,nz-1)
-
+function precompDist!(d_cube, x_vec, y_vec, xCells, yCells, zCells, nx, ny, nz)
     for iX = 1 : nx - 1
         for iY = 1 : ny - 1
             for iZ = 1 : nz - 1
-                d_square[iX,iY,iZ] = (xCells[iX]-x_vec[1])^2 + (yCells[iY]-y_vec[1])^2 + zCells[iZ]^2
+                d_cube[iX,iY,iZ] = (xCells[iX]-x_vec[1])^2 + (yCells[iY]-y_vec[1])^2 + zCells[iZ]^2
             end
         end
     end
-
-    d_cube = d_square .^1.5
-
-    return d_cube
+    d_cube .= d_cube .^ 1.5
 end
 
-function computeBoug(nx,ny,nz,DRHO,d_cube,VG_vox,zCells,rhoTol)
-    mGal   = 1e5
-
-    dg     = zeros(nx,ny)
-
+function computeBoug!(dg,nx,ny,nz,DRHO,d_cube,VG_vox,zCells,rhoTol)
     for jX = 1 : nx-1
         for jY = 1 : ny-1
             for jZ = 1 : nz-1
                 if (DRHO[jX,jY,jZ] > rhoTol || DRHO[jX,jY,jZ] < -rhoTol)
                     for iX = 1 : nx
                         for iY = 1 : ny
-                            d_indX = jX-iX
+                            d_indX    = jX-iX
                             if d_indX < 0; d_indX = abs(d_indX); else d_indX = d_indX + 1; end
-                            d_indY = jY-iY;
+                            d_indY    = jY-iY;
                             if d_indY < 0; d_indY = abs(d_indY); else d_indY = d_indY + 1; end
                             d_c       = d_cube[d_indX,d_indY,jZ];
                             dg[iX,iY] = dg[iX,iY] + VG_vox * DRHO[jX,jY,jZ] * -zCells[jZ]/d_c;
@@ -281,15 +276,10 @@ function computeBoug(nx,ny,nz,DRHO,d_cube,VG_vox,zCells,rhoTol)
         end
     end
 
-    dg = dg * mGal
-
-    return dg
+    dg .= dg .* 1e5
 end
 
-function computeBougGrads(nx,ny,dg)
-    gradX  = zeros(nx,ny)
-    gradY  = zeros(nx,ny)
-
+function computeBougGrads!(gradX, gradY, nx, ny, dg)
     for iY = 1 : ny
         itp  = interpolate(dg[:,iY], BSpline(Quadratic(Reflect(OnCell()))))
         for iX = 1 : nx
@@ -305,6 +295,4 @@ function computeBougGrads(nx,ny,dg)
             gradY[iX,iY] = grad[1]
         end
     end
-
-    return gradX, gradY
 end
