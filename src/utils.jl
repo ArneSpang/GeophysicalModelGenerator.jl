@@ -7,9 +7,9 @@ export RotateTranslateScale
 export LithostaticPressure!
 export FlattenCrossSection
 export AddField, RemoveField
-export inPolyPoint, inPolyPointF, inPolygon!
+export inPolyPoint, inPolyPointF, inPolygon!, inPolyhedron!, inPolyhedronPointF
 
-using NearestNeighbors
+using NearestNeighbors, LinearAlgebra
 
 """
     meshgrid(vx,vy,vz)
@@ -1703,22 +1703,27 @@ function inPolyPoint(PolyX::Vector{T}, PolyY::Vector{T}, x::T, y::T) where T <: 
 
         con1 = ((yi > y) != (yj > y))
         con2 = ((yi >= y) != (yj >= y))
-        if con1 && (x > (xj - xi) * (y - yi) / (yj - yi + eps()) + xi)
+        if con1 && (x > (xj - xi) * (y - yi) / (yj - yi) + xi)
+            println("Edge $(i): Turned First.")
             inside1 = !inside1
         end
 
-        if con1 && (x >= (xj - xi) * (y - yi) / (yj - yi + eps()) + xi)
+        if con1 && (x >= (xj - xi) * (y - yi) / (yj - yi) + xi)
+            println("Edge $(i): Turned Second.")
             inside2 = !inside2
         end
 
-        if con2 && (x > (xj - xi) * (y - yi) / (yj - yi + eps()) + xi)
+        if con2 && (x > (xj - xi) * (y - yi) / (yj - yi) + xi)
+            println("Edge $(i): Turned Third.")
             inside3 = !inside3
         end
 
-        if con2 && (x >= (xj - xi) * (y - yi) / (yj - yi + eps()) + xi)
+        if con2 && (x >= (xj - xi) * (y - yi) / (yj - yi) + xi)
+            println("Edge $(i): Turned Fourth.")
             inside4 = !inside4
         end
     end
+    println("$inside1, $inside2, $inside3, $inside4.")
     return ((inside1 || inside2) || (inside3 || inside4))
 end
 
@@ -1739,9 +1744,53 @@ function inPolyPointF(PolyX::Vector{T}, PolyY::Vector{T}, x::T, y::T) where T <:
         xj = PolyX[j]
         yj = PolyY[j]
 
-        if ((yi > y) != (yj > y)) && (x > (xj - xi) * (y - yi) / (yj - yi + eps()) + xi)
+        if ((yi > y) != (yj > y)) && (x > (xj - xi) * (y - yi) / (yj - yi) + xi)
             inside = !inside
         end
     end
     return inside
+end
+
+function getPlane(A::Vector{T}, B::Vector{T}, C::Vector{T}) where T <: Real
+    vec1   = B .- A
+    vec2   = C .- A
+    nVec   = cross(vec1, vec2)
+    k      = -dot(A, nVec)
+    return nVec[1], nVec[2], nVec[3], k
+end
+
+function crossProd(A::Vector{T}, B::Vector{T}) where T <: Real
+    return [A[2]*B[3] - A[3]*B[2], A[3]*B[1] - A[1]*B[3], A[1]*B[2] - A[2]*B[1]]
+end
+
+function inPolyhedronPointF(VertX::Vector{T}, VertY::Vector{T}, VertZ::Vector{T}, Faces::Array{Int64, 2}, x::T, y::T, z::T) where T <: Real
+    inside = false
+    for i in axes(Faces, 1)
+        # coordinates of face
+        inds = Faces[i,:]
+        FX = VertX[inds]
+        FY = VertY[inds]
+        FZ = VertZ[inds]
+        # are x and y in the face?
+        if inPolyPointF(FY, FZ, y, z)
+            # get plane equation of face
+            plane = getPlane([FX[1], FY[1], FZ[1]],[FX[2], FY[2], FZ[2]],[FX[3], FY[3], FZ[3]])
+            # intersection face with ray
+            xt    = -(plane[2]*y + plane[3]*z + plane[4])/plane[1]
+            if x > xt
+                inside = !inside
+            end
+        end
+    end
+    return inside
+end
+
+function inPolyhedron!(INSIDE::Matrix{Bool}, VertX::Vector{T}, VertY::Vector{T}, VertZ::Vector{T}, Faces::Array{T, 2}, X::Matrix{T}, Y::Matrix{T}, Z::Matrix{T}) where T <:Real
+    for k in axes(X, 3)
+        for j in axes(X, 2)
+            for i in axes(X, 1)
+                INSIDE[i,j,k] = inPolyhedronPointF(VertX, VertY, VertZ, Faces, X[i,j,k], Y[i,j,k], Z[i,j,k])
+            end
+        end
+    end
 end

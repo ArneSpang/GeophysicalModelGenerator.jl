@@ -243,7 +243,7 @@ cross_tmp = CrossSection(Data_EQ,Start=(15.0,35.0),End=(17.0,37.0),section_width
 # test inPolygon
 PolyX = [-2.,-1,0,1,2,1,3,3,8,3,3,1,2,1,0,-1,-2,-1,-3,-3,-8,-3,-3,-1,-2]
 PolyY = [3.,3,8.01,3,3,1,2,1,0,-1,-2,-1,-3,-3,-8,-3,-3,-1,-2,-1,0,1,2,1,3]
-xvec  = collect(-9:0.5:9); yvec = collect(-9:0.5:9); zvec = collect(1.:1.);
+xvec  = collect(-9:0.5:9); yvec = collect(-9:0.5:9); zvec = collect(1.:1.)
 X,Y,Z = meshgrid(xvec, yvec, zvec)
 X, Y  = X[:,:,1], Y[:,:,1]
 yN    = zeros(Bool, size(X))
@@ -256,3 +256,12 @@ inPolygon!(yN, PolyX, PolyY, X, Y, fast=true)
 @test sum(yN) == 194
 inPolygon!(yN, PolyX, PolyY, X, Y)
 @test sum(yN) == 217
+
+# test inPolyhedron
+VertX = [-1., 2, 2, -1, -1, 2, 2, -1]
+VertY = [-1., -1, 2, 2, -1, -1, 2, 2]
+VertZ = [-1., -1, -1, -1, 2, 2, 2, 2]
+Faces = [1 2 3 4; 5 6 7 8; 1 2 5 6; 2 3 7 6; 4 3 7 8; 1 4 8 5]
+xvec  = collect(-3:0.5:3); yvec = collect(-3:0.5:3); zvec = collect(-3:0.5:3)
+X,Y,Z = meshgrid(xvec, yvec, zvec)
+yN    = zeros(Bool, size(X))
