@@ -281,7 +281,7 @@ end
 
 function computeBougGrads!(gradX, gradY, nx, ny, dg)
     for iY = 1 : ny
-        itp  = interpolate(dg[:,iY], BSpline(Quadratic(Reflect(OnCell()))))
+        itp  = Interpolations.interpolate(dg[:,iY], BSpline(Quadratic(Reflect(OnCell()))))
         for iX = 1 : nx
             grad         = Interpolations.gradient(itp,iX)
             gradX[iX,iY] = grad[1]
@@ -289,7 +289,7 @@ function computeBougGrads!(gradX, gradY, nx, ny, dg)
     end
 
     for iX = 1 : nx
-        itp  = interpolate(dg[iX,:], BSpline(Quadratic(Reflect(OnCell()))))
+        itp  = Interpolations.interpolate(dg[iX,:], BSpline(Quadratic(Reflect(OnCell()))))
         for iY = 1 : ny
             grad         = Interpolations.gradient(itp,iY)
             gradY[iX,iY] = grad[1]

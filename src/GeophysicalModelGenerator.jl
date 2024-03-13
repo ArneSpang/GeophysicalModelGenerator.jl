@@ -32,10 +32,10 @@ export load
 # add files for specific tasks
 include("data_types.jl")
 include("data_import.jl")
-include("coord_conversion.jl")
 include("nearest_points.jl")
 include("utils.jl")
 include("Paraview_output.jl")
+include("Paraview_collection.jl")
 include("transformation.jl")
 include("voxel_gravity.jl")
 include("LaMEM_io.jl")
@@ -52,13 +52,13 @@ include("movies_from_pics.jl")
 # GMT routines
 
 """
-        ImportTopo     
+        ImportTopo
 Optional routine that imports topography. It requires you to load `GMT`
 """
 function ImportTopo end
 
 """
-        ImportGeoTIFF     
+        ImportGeoTIFF
 Optional routine that imports GeoTIFF images. It requires you to load `GMT`
 """
 function ImportGeoTIFF end
